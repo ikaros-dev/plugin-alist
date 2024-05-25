@@ -4,8 +4,8 @@ name: PluginAList
 # plugin entry class that extends BasePlugin
 clazz: run.ikaros.plugin.alist.AListPlugin
 # plugin 'version' is a valid semantic version string (see semver.org).
-version: 0.12.0
-requires: ">=0.12.0"
+version: 0.13.0
+requires: ">=0.13.0"
 author:
   name: Ikaros OSS Team
   website: https://github.com/ikaros-dev

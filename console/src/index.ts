@@ -1,5 +1,5 @@
 import { definePlugin } from "@runikaros/shared"
-import HelloIkaros from '@/views/HelloIkaros.vue';
+import AListControl from '@/views/AListControl.vue';
 import { Files as FilesIcon } from '@element-plus/icons-vue';
 import {  markRaw } from "vue"
 
@@ -10,13 +10,13 @@ export default definePlugin({
       {
         parentName: "Root",
         route: {
-          path: '/PluginStarter',
-          component: HelloIkaros,
-          name: "HelloIkaros",
+          path: '/PluginAListControl',
+          component: AListControl,
+          name: "AListControl",
           meta: {
-            title: '示例页面',
+            title: 'AList',
             menu: {
-              name: '示例页面',
+              name: 'AList',
               group: 'tool',
               icon: markRaw(FilesIcon),
 							priority: 2,

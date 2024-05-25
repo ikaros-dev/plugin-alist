@@ -1,8 +1,10 @@
 package run.ikaros.plugin.alist;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.reactivestreams.Publisher;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.event.EventListener;
@@ -26,10 +28,7 @@ import run.ikaros.api.plugin.event.PluginConfigMapUpdateEvent;
 import run.ikaros.plugin.alist.AListConst.ConfigMapKey;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 @Slf4j
 @Component
@@ -45,6 +44,15 @@ public class AListClient {
 
     public AListClient(ReactiveCustomClient customClient) {
         this.customClient = customClient;
+    }
+
+    public Mono<Void> doImportFilesFromAListPath(String path) {
+        if (StringUtils.isEmpty(path)) {
+            return Mono.error(IllegalArgumentException::new);
+        }
+        // 查询路径，递归导入
+
+        return Mono.empty();
     }
 
 
@@ -70,20 +78,14 @@ public class AListClient {
             Map<String, String> bodyMap = new HashMap<>();
             bodyMap.put("username", token.getUsername());
             bodyMap.put("password", token.getPassword());
-            String body = null;
-            try {
-                body = new ObjectMapper().writeValueAsString(bodyMap);
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
-
+            String body = JsonUtils.obj2Json(bodyMap);
             httpHeaders.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> httpEntity = new HttpEntity<>(body, httpHeaders);
 
             ResponseEntity<ApiResult> responseEntity =
                     restTemplate.postForEntity(token.getUrl() + API.AUTH_TOKEN, httpEntity, ApiResult.class);
             ApiResult apiResult = responseEntity.getBody();
-            log.debug("post token to alist for token: {}", JsonUtils.obj2Json(token));
+            // log.debug("post token to alist for token: {}", JsonUtils.obj2Json(token));
             if (apiResult != null && apiResult.getCode() == 200) {
                 Object token1 = apiResult.getData().get("token");
                 httpHeaders.set("Authorization", String.valueOf(token1));
@@ -108,6 +110,94 @@ public class AListClient {
         return Mono.just(token);
     }
 
+
+    public Flux<AListAttachment> getAListAttachments(String basePath) {
+        if (StringUtils.isEmpty(basePath)) {
+            return Flux.empty();
+        }
+
+        if (StringUtils.isBlank(token.getUrl())
+                || StringUtils.isBlank(token.getUsername())
+                || StringUtils.isBlank(token.getPassword())) {
+            log.warn("token url or username or password is null or empty for token: {}",
+                    JsonUtils.obj2Json(token));
+            return Flux.empty();
+        }
+
+        List<String> paths = Arrays.stream(basePath.split("/")).filter(StringUtils::isNotBlank).toList();
+
+        Map<String, String> bodyMap = new HashMap<>();
+        bodyMap.put("path", basePath);
+        String body = JsonUtils.obj2Json(bodyMap);
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> httpEntity = new HttpEntity<>(body, httpHeaders);
+
+        ResponseEntity<ApiResult> responseEntity =
+                restTemplate.postForEntity(token.getUrl() + API.FS_LIST, httpEntity, ApiResult.class);
+        ApiResult apiResult = responseEntity.getBody();
+        if (apiResult != null && apiResult.getCode() == 200) {
+            Object content = apiResult.getData().get("content");
+            AListAttachment[] aListAttachments = JsonUtils.obj2Arr(content, new TypeReference<AListAttachment[]>() {
+            });
+            return Flux.fromArray(aListAttachments)
+                    .map(aListAttachment -> {
+                        List<String> newPaths = new ArrayList<>(paths);
+                        newPaths.add(aListAttachment.getName());
+                        aListAttachment.setPaths(newPaths);
+                        return aListAttachment;
+                    })
+                    .flatMap(aListAttachment -> {
+                        if (aListAttachment.getIs_dir()) {
+                            return Mono.just(aListAttachment);
+                        } else {
+                            List<String> paths1 = aListAttachment.getPaths();
+                            StringBuilder path1 = new StringBuilder("/");
+                            for (String p: paths1) {
+                                path1.append(p).append("/");
+                            }
+                            return fetchAttachmentDetailByPath(path1.toString(), aListAttachment);
+                        }
+
+                    });
+        } else {
+            log.error("post get alist attachments for apiResult: {}", apiResult);
+        }
+
+        return Flux.empty();
+    }
+
+    private Mono<AListAttachment> fetchAttachmentDetailByPath(String path, AListAttachment attachment) {
+        if (StringUtils.isEmpty(path)) {
+            return Mono.just(attachment);
+        }
+
+        if (StringUtils.isBlank(token.getUrl())
+                || StringUtils.isBlank(token.getUsername())
+                || StringUtils.isBlank(token.getPassword())) {
+            log.warn("token url or username or password is null or empty for token: {}",
+                    JsonUtils.obj2Json(token));
+            return Mono.empty();
+        }
+
+        Map<String, String> bodyMap = new HashMap<>();
+        bodyMap.put("path", path);
+        String body = JsonUtils.obj2Json(bodyMap);
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> httpEntity = new HttpEntity<>(body, httpHeaders);
+
+        ResponseEntity<ApiResult> responseEntity =
+                restTemplate.postForEntity(token.getUrl() + API.FS_GET, httpEntity, ApiResult.class);
+        ApiResult apiResult = responseEntity.getBody();
+        if (apiResult != null && apiResult.getCode() == 200) {
+            AListAttachment aListAttachment = JsonUtils.json2obj(JsonUtils.obj2Json(apiResult.getData()), AListAttachment.class);
+            if (Objects.isNull(aListAttachment)) return Mono.just(attachment);
+            aListAttachment.setPaths(attachment.getPaths());
+            return Mono.just(aListAttachment);
+        } else {
+            log.error("post alist attachment details for apiResult: {}", apiResult);
+        }
+        return Mono.just(attachment);
+    }
 
 
     public Mono<ConfigMap> getConfigMap() {
