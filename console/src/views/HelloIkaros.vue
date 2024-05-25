@@ -2,7 +2,7 @@
 
 <template>
   <div class="ik-plugin-stater-container">
-    Hello Ikaros Plugin Stater Home View.
+    Hello Ikaros Plugin AList Home View.
   </div>
 </template>
 

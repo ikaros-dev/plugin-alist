@@ -1,4 +1,4 @@
-package run.ikaros.plugin.starter;
+package run.ikaros.plugin.alist;
 
 
 import lombok.extern.slf4j.Slf4j;
@@ -8,24 +8,26 @@ import run.ikaros.api.plugin.BasePlugin;
 
 @Slf4j
 @Component
-public class StarterPlugin extends BasePlugin {
+public class AListPlugin extends BasePlugin {
 
-    public StarterPlugin(PluginWrapper wrapper) {
+    public static final String NAME = "PluginAList";
+
+    public AListPlugin(PluginWrapper wrapper) {
         super(wrapper);
     }
 
     @Override
     public void start() {
-        log.info("plugin [PluginStarter] start success");
+        log.info("plugin ["+ NAME +"] start success");
     }
 
     @Override
     public void stop() {
-        log.info("plugin [PluginStarter] stop success");
+        log.info("plugin ["+ NAME +"] stop success");
     }
 
     @Override
     public void delete() {
-        log.info("plugin [PluginStarter] delete success");
+        log.info("plugin ["+ NAME +"] delete success");
     }
 }

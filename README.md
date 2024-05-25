@@ -1,2 +1,2 @@
-# plugin-starter
-ikaros plugin starter template
+# plugin-alist
+ikaros plugin for [alist](https://alist.nn.ci/).

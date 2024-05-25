@@ -4,7 +4,7 @@ import { Files as FilesIcon } from '@element-plus/icons-vue';
 import {  markRaw } from "vue"
 
 export default definePlugin({
-    name: 'PluginStarter',
+    name: 'PluginAList',
     components: {},
     routes: [
       {
@@ -17,7 +17,7 @@ export default definePlugin({
             title: '示例页面',
             menu: {
               name: '示例页面',
-              group: 'content',
+              group: 'tool',
               icon: markRaw(FilesIcon),
 							priority: 2,
 							mobile: true,
