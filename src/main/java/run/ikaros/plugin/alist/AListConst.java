@@ -9,4 +9,7 @@ public interface AListConst {
         String apiToken = "apiToken";
         String apiExpire = "apiExpire";
     }
+    interface Attachment {
+        String DEFAULT_PARENT_NAME = "AList";
+    }
 }
