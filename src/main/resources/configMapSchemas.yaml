@@ -27,13 +27,20 @@
     id: 'enableAutoTokenRefresh'
     label: '当Token过期，是否自动刷新？'
 
+- $cmp: 'FormKit'
+  props:
+    name: 'apiToken'
+    value: "$apiToken"
+    type: 'input'
+    id: 'apiToken'
+    attrs:
+      type: 'hidden'
 
-- $formkit: 'text'
-  name: 'apiToken'
-  value: '$apiToken'
-  type: 'hidden'
-
-- $formkit: 'text'
-  name: 'apiExpire'
-  value: '$apiExpire'
-  type: 'hidden'
+- $cmp: 'FormKit'
+  props:
+    name: 'apiExpire'
+    value: "$apiExpire"
+    type: 'input'
+    id: 'apiExpire'
+    attrs:
+      type: 'hidden'
