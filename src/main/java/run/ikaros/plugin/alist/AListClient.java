@@ -143,7 +143,7 @@ public class AListClient {
                                 .updateTime(LocalDateTime.now())
                                 .type(aListAttachment.getIs_dir() ? AttachmentType.Directory : AttachmentType.File)
                                 .size(aListAttachment.getSize())
-                                .url(URLDecoder.decode(aListAttachment.getRaw_url(), StandardCharsets.UTF_8))
+                                .url(aListAttachment.getRaw_url())
                                 .fsPath(getPathByPathArr(aListAttachment.getPaths()))
                                 .build())
                 .flatMap(attachment -> attachmentOperate.findByTypeAndParentIdAndName(
