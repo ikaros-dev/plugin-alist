@@ -10,7 +10,7 @@ on:
 jobs:
 
   release:
-    if: github.repository == 'ikaros-dev/plugin-bgmtv'
+    if: github.repository == 'ikaros-dev/plugin-alist'
     name: Build with java 17 and upload
     runs-on: ubuntu-latest
     steps:
@@ -43,8 +43,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.LI_GUOHAO_TOKEN }}
-          file: /home/runner/work/plugin-starter/plugin-starter/build/libs/plugin-bgmtv-${{steps.get_version.outputs.version}}.jar
-          asset_name: plugin-bgmtv-${{steps.get_version.outputs.version}}.jar
+          file: /home/runner/work/plugin-alist/plugin-alist/build/libs/plugin-alist-${{steps.get_version.outputs.version}}.jar
+          asset_name: plugin-alist-${{steps.get_version.outputs.version}}.jar
 
 
 
