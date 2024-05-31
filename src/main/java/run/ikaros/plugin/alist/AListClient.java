@@ -104,7 +104,8 @@ public class AListClient {
     @Retryable
     public AListAttachment[] fetchAttachments(List<String> paths) {
         Map<String, String> bodyMap = new HashMap<>();
-        bodyMap.put("path", getPathByPathArr(paths));
+        String path = getPathByPathArr(paths);
+        bodyMap.put("path", path);
         String body = JsonUtils.obj2Json(bodyMap);
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<String> httpEntity = new HttpEntity<>(body, httpHeaders);
@@ -117,7 +118,10 @@ public class AListClient {
             return JsonUtils.obj2Arr(content, new TypeReference<AListAttachment[]>() {
             });
         } else {
-            log.error("post get alist attachments for apiResult: {}", apiResult);
+            log.error("post get alist attachments for path: {} and apiResult: {}", path, apiResult);
+            if (Objects.nonNull(apiResult) && apiResult.getCode() == 401) {
+                updateOperateByToken().subscribe();
+            }
         }
 
         return new AListAttachment[0];
@@ -166,8 +170,12 @@ public class AListClient {
         String FS_GET = "/api/fs/get";
     }
 
-    @Retryable
     public Mono<AListToken> refreshToken() {
+        return refreshToken(false);
+    }
+
+    @Retryable
+    public Mono<AListToken> refreshToken(boolean refresh) {
         if (StringUtils.isBlank(token.getUrl())
         || StringUtils.isBlank(token.getUsername())
             || StringUtils.isBlank(token.getPassword())) {
@@ -176,7 +184,7 @@ public class AListClient {
             return Mono.empty();
         }
 
-        if (StringUtils.isBlank(token.getToken())) {
+        if (StringUtils.isBlank(token.getToken()) || refresh) {
             Map<String, String> bodyMap = new HashMap<>();
             bodyMap.put("username", token.getUsername());
             bodyMap.put("password", token.getPassword());
@@ -217,7 +225,11 @@ public class AListClient {
         for (String p: paths) {
             path.append(p).append("/");
         }
-        return path.toString();
+        String pStr = path.toString();
+        if (pStr.endsWith("/")) {
+            pStr = pStr.substring(0, pStr.length() - 1);
+        }
+        return pStr;
     }
 
     @Retryable
