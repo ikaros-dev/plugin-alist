@@ -52,6 +52,8 @@ public class AListClient {
             return Mono.error(new IllegalArgumentException("paths is null or empty"));
         }
         return Mono.justOrEmpty(token)
+                .filter(Objects::nonNull)
+                .filter(token -> StringUtils.isNotBlank(token.getToken()))
                 .switchIfEmpty(updateOperateByToken())
                 .flatMap(token -> attachmentOperate.findByTypeAndParentIdAndName(AttachmentType.Directory, AttachmentConst.ROOT_DIRECTORY_ID,
                         AListConst.Attachment.DEFAULT_PARENT_NAME))
@@ -119,8 +121,8 @@ public class AListClient {
             });
         } else {
             log.error("post get alist attachments for path: {} and apiResult: {}", path, apiResult);
-            if (Objects.nonNull(apiResult) && apiResult.getCode() == 401) {
-                updateOperateByToken().subscribe();
+            if (Objects.nonNull(apiResult) && 401 == apiResult.getCode()) {
+                token = null;
             }
         }
 
@@ -204,6 +206,10 @@ public class AListClient {
                         .then(Mono.just(token));
             } else {
                 log.error("post token to alist for apiResult: {}", apiResult);
+                if (Objects.nonNull(apiResult) && 401 == apiResult.getCode()) {
+                    token = null;
+                }
+                return Mono.empty();
             }
         }
         if (StringUtils.isNotBlank(token.getToken())) {
@@ -264,6 +270,9 @@ public class AListClient {
             return aListAttachment;
         } else {
             log.error("post alist attachment details for apiResult: {}", apiResult);
+            if (Objects.nonNull(apiResult) && 401 == apiResult.getCode()) {
+                token = null;
+            }
         }
         return attachment;
     }
@@ -325,7 +334,7 @@ public class AListClient {
     }
 
     public Mono<AListToken> updateOperateByToken() {
-        return getToken().flatMap(aListToken -> refreshToken());
+        return getToken().flatMap(aListToken -> refreshToken(true));
     }
 
     @EventListener(ApplicationReadyEvent.class)
