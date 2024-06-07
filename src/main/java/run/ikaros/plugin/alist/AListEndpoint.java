@@ -18,6 +18,7 @@ import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Objects;
 
 import static org.springdoc.core.fn.builders.content.Builder.contentBuilder;
@@ -59,6 +60,7 @@ public class AListEndpoint implements CustomEndpoint {
         return request.bodyToMono(AListImportPostBody.class)
                 .filter(Objects::nonNull)
                 .map(AListImportPostBody::getPath)
+                .map(path -> new String(Base64.getDecoder().decode(path), StandardCharsets.UTF_8))
                 .map(path -> URLDecoder.decode(path, StandardCharsets.UTF_8))
                 .doOnSuccess(s -> log.debug("paths: {}", s))
                 .filter(StringUtils::isNotBlank)

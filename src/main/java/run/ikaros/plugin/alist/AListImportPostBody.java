@@ -13,6 +13,6 @@ import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 @AllArgsConstructor
 @Accessors(chain = true)
 public class AListImportPostBody {
-    @Schema(requiredMode = REQUIRED)
+    @Schema(requiredMode = REQUIRED, description = "导入的路径，需要警告base64进行编码。")
     private String path;
 }
