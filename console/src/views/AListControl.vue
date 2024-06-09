@@ -3,10 +3,10 @@
 
 <template>
   <div class="ik-plugin-alist-container">
-    Hello Ikaros Plugin AList Home View.
+    <h3>AList 插件操作</h3>
     <hr />
     <form name="form" method="post" action="#">
-      <input name="path" placeholder="请输入需要导入的基础路径" required>
+      <input name="path" placeholder="请输入需要导入的相对路径路径" required>
       <input type="submit" name="submit" value="提交导入">
     </form>
   </div>
@@ -14,7 +14,7 @@
 
 <style scoped>
 .ik-plugin-alist-container {
-  display: inline-block;
+  display: block;
   width: 100%;
   height: 100%;
   background-color: antiquewhite;
