@@ -25,8 +25,6 @@ import run.ikaros.api.plugin.event.PluginConfigMapUpdateEvent;
 import run.ikaros.api.store.enums.AttachmentType;
 import run.ikaros.plugin.alist.AListConst.ConfigMapKey;
 
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -142,18 +140,22 @@ public class AListClient {
     }
 
     private Mono<AListAttachment> saveAListAttachment(AListAttachment aListAttachment) {
-        return attachmentOperate.save(
+        AttachmentType type = aListAttachment.getIs_dir() ? AttachmentType.Directory : AttachmentType.File;
+        return attachmentOperate.existsByTypeAndParentIdAndName(type,
+                        aListAttachment.getParentId(), aListAttachment.getName())
+                .filter(exists -> !exists)
+                .flatMap(exists -> attachmentOperate.save(
                         Attachment.builder()
                                 .parentId(aListAttachment.getParentId())
                                 .name(aListAttachment.getName())
                                 .updateTime(LocalDateTime.now())
-                                .type(aListAttachment.getIs_dir() ? AttachmentType.Directory : AttachmentType.File)
+                                .type(type)
                                 .size(aListAttachment.getSize())
                                 .url(aListAttachment.getRaw_url())
                                 .fsPath(getPathByPathArr(aListAttachment.getPaths()))
-                                .build())
-                .flatMap(attachment -> attachmentOperate.findByTypeAndParentIdAndName(
-                        attachment.getType(), attachment.getParentId(), attachment.getName()
+                                .build()))
+                .then(attachmentOperate.findByTypeAndParentIdAndName(
+                        type, aListAttachment.getParentId(), aListAttachment.getName()
                 ))
                 .map(attachment -> {
                     aListAttachment.setParentId(attachment.getParentId());
@@ -179,8 +181,8 @@ public class AListClient {
     @Retryable
     public Mono<AListToken> refreshToken(boolean refresh) {
         if (StringUtils.isBlank(token.getUrl())
-        || StringUtils.isBlank(token.getUsername())
-            || StringUtils.isBlank(token.getPassword())) {
+                || StringUtils.isBlank(token.getUsername())
+                || StringUtils.isBlank(token.getPassword())) {
             log.warn("token url or username or password is null or empty for token: {}",
                     JsonUtils.obj2Json(token));
             return Mono.empty();
@@ -228,7 +230,7 @@ public class AListClient {
 
     private String getPathByPathArr(List<String> paths) {
         StringBuilder path = new StringBuilder("/");
-        for (String p: paths) {
+        for (String p : paths) {
             path.append(p).append("/");
         }
         String pStr = path.toString();
@@ -295,13 +297,13 @@ public class AListClient {
         token.setPassword(cmd.get(ConfigMapKey.apiPassword));
         token.setEnableAutoTokenRefresh(
                 Boolean.parseBoolean(
-                StringUtils.isNotBlank(cmd.get(ConfigMapKey.enableAutoTokenRefresh))
-                        ? cmd.get(ConfigMapKey.enableAutoTokenRefresh) : "false"
-        ));
+                        StringUtils.isNotBlank(cmd.get(ConfigMapKey.enableAutoTokenRefresh))
+                                ? cmd.get(ConfigMapKey.enableAutoTokenRefresh) : "false"
+                ));
         token.setToken(cmd.get(ConfigMapKey.apiToken));
         token.setExpire(
                 StringUtils.isNotBlank(cmd.get(ConfigMapKey.apiExpire))
-                ? Long.parseLong(cmd.get(ConfigMapKey.apiExpire)) : 0
+                        ? Long.parseLong(cmd.get(ConfigMapKey.apiExpire)) : 0
         );
         // log.debug("token: {}", token);
         return token;
@@ -351,7 +353,7 @@ public class AListClient {
     @EventListener(PluginConfigMapUpdateEvent.class)
     public Mono<Void> onConfigMapUpdated(PluginConfigMapUpdateEvent updateEvent) throws Exception {
         // log.debug("afterPropertiesSet PluginConfigMapUpdateEvent for event: {}", new ObjectMapper().writeValueAsString(updateEvent));
-        if(Objects.isNull(updateEvent.getConfigMap()) || !AListPlugin.NAME.equals(updateEvent.getConfigMap().getName())) {
+        if (Objects.isNull(updateEvent.getConfigMap()) || !AListPlugin.NAME.equals(updateEvent.getConfigMap().getName())) {
             return Mono.empty();
         }
         return updateOperateByToken().then();
