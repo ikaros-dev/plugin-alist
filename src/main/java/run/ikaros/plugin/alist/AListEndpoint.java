@@ -10,27 +10,23 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 import run.ikaros.api.custom.GroupVersionKind;
-import run.ikaros.api.custom.ReactiveCustomClient;
 import run.ikaros.api.endpoint.CustomEndpoint;
 import run.ikaros.api.infra.utils.StringUtils;
 
 import java.net.URLDecoder;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Objects;
 
 import static org.springdoc.core.fn.builders.content.Builder.contentBuilder;
-import static org.springdoc.core.fn.builders.encoding.Builder.encodingBuilder;
-import static org.springdoc.core.fn.builders.schema.Builder.schemaBuilder;
 
 @Slf4j
 @Component
 public class AListEndpoint implements CustomEndpoint {
 
     private GroupVersionKind groupVersionKind =
-        new GroupVersionKind("plugin.ikaros.run", "v1alpha1", AListPlugin.NAME);
+            new GroupVersionKind("plugin.ikaros.run", "v1alpha1", AListPlugin.NAME);
 
     private final AListClient aListClient;
 
@@ -41,8 +37,8 @@ public class AListEndpoint implements CustomEndpoint {
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         var tag = groupVersionKind.group()
-            + "/" + groupVersionKind.version()
-            + "/" + groupVersionKind.kind();
+                + "/" + groupVersionKind.version()
+                + "/" + groupVersionKind.kind();
         return SpringdocRouteBuilder.route()
                 .POST("/alist/import", this::doImportFilesFromAList,
                         builder -> builder.operationId("ImportAlistFiles")
@@ -53,7 +49,7 @@ public class AListEndpoint implements CustomEndpoint {
                                         .content(contentBuilder()
                                                 .mediaType(MediaType.APPLICATION_JSON_VALUE))
                                         .implementation(AListImportPostBody.class)))
-            .build();
+                .build();
     }
 
     Mono<ServerResponse> doImportFilesFromAList(ServerRequest request) {
@@ -62,8 +58,10 @@ public class AListEndpoint implements CustomEndpoint {
                 .map(AListImportPostBody::getPath)
                 .map(path -> new String(Base64.getDecoder().decode(path), StandardCharsets.UTF_8))
                 .map(path -> URLDecoder.decode(path, StandardCharsets.UTF_8))
-                .doOnSuccess(s -> log.debug("paths: {}", s))
+                .doOnSuccess(s -> log.debug("path: {}", s))
                 .filter(StringUtils::isNotBlank)
+                .flatMap(this::removeHttpPrefixIfExists)
+                .doOnSuccess(s -> log.debug("relative path: {}", s))
                 .map(path -> Arrays.stream(path.split("/")).filter(StringUtils::isNotBlank).toList())
                 .doOnSuccess(strings -> log.debug("strings size: {}", strings.size()))
                 .filter(Objects::nonNull)
@@ -71,6 +69,22 @@ public class AListEndpoint implements CustomEndpoint {
                 .flatMap(aListClient::doImportFilesFromAListPath)
                 .then(ServerResponse.ok().build())
                 .switchIfEmpty(ServerResponse.notFound().build());
+    }
+
+    /**
+     * 支持直接复制AList浏览器URL，而无需去区分是不是相对路径。
+     *
+     * @param path 浏览器URL
+     * @return 相对路径
+     */
+    private Mono<String> removeHttpPrefixIfExists(String path) {
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return aListClient.getToken()
+                    .map(AListToken::getUrl)
+                    .map(url -> path.replace(url, ""))
+                    .map(p -> p.startsWith("/") ? p : "/" + p);
+        }
+        return Mono.just(path);
     }
 
     @Override

@@ -12,7 +12,7 @@ const http = axios.create({
 
 const doPostImportPath = () => {
   if (!path.value) {
-    window.alert('请输入alist的相对路径，比如：/PKPK/LP-Raws/');
+    window.alert('请输入alist的浏览器路径，比如：https://domain.com/PKPK/LP-Raws');
     return;
   }
   // basic64 编码
