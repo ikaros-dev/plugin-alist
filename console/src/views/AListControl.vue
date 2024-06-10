@@ -55,7 +55,7 @@ const onInputChange = (event:any) => {
   <div class="ik-plugin-alist-container">
     <h3>AList 插件操作</h3>
     <hr />
-    <input style="width: 800px;display: block;" placeholder="请输入需要导入的相对路径，比如：/PKPK/LP-Raws , 递归处理，提交后还请耐心等待。" :value="path"  @input="onInputChange">
+    <input style="width: 800px;display: block;" placeholder="请输入需要导入AList浏览器路径，比如：https://domain.com/PKPK/LP-Raws , 递归处理，提交后还请耐心等待。" :value="path"  @input="onInputChange">
     <br />
     <button id="submitBtn" v-on:click="doPostImportPath">提交导入</button>
   </div> 
