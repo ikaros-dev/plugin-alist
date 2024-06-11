@@ -153,7 +153,8 @@ public class AListClient {
                                 .size(aListAttachment.getSize())
                                 .url(aListAttachment.getRaw_url())
                                 .fsPath(getPathByPathArr(aListAttachment.getPaths()))
-                                .build()))
+                                .build())
+                        .doOnSuccess(att -> log.debug("Save attachment[{}] for alist[{}]", att.getName(), att.getFsPath())))
                 .then(attachmentOperate.findByTypeAndParentIdAndName(
                         type, aListAttachment.getParentId(), aListAttachment.getName()
                 ))
