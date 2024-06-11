@@ -69,7 +69,9 @@ public class AListEndpoint implements CustomEndpoint {
                 .doOnSuccess(strings -> log.debug("strings size: {}", strings.size()))
                 .filter(Objects::nonNull)
                 .filter(strings -> !strings.isEmpty())
+                .doOnSuccess(strings -> log.info("Start import alist files..."))
                 .flatMap(aListClient::doImportFilesFromAListPath)
+                .doOnSuccess(strings -> log.info("End import alist files."))
                 .then(ServerResponse.ok().build())
                 .switchIfEmpty(ServerResponse.notFound().build());
     }
