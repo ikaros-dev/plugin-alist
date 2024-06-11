@@ -17,7 +17,7 @@ const doPostImportPath = () => {
   }
   // basic64 编码
   console.debug('original path value: ', path.value);
-  var base64Path = Base64.encode(path.value);
+  const base64Path = Base64.encode(path.value);
   console.debug('basic64 path value: ', base64Path);
   let config = {
         headers: {'Content-Type': "application/json;charset=UTF-8"}
