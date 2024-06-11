@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -93,13 +92,12 @@ public class AListClient implements InitializingBean, DisposableBean {
                 .flatMap(this::saveAListAttachment)
                 .flatMap(aListAttachment -> {
                     if (aListAttachment.getIs_dir()) {
-                        List<String> paths1 = aListAttachment.getPaths();
-                        return createAttachmentRecursively(paths1, aListAttachment.getId())
+                        return Mono.defer(() ->
+                                        createAttachmentRecursively(aListAttachment.getPaths(), aListAttachment.getId()))
                                 .subscribeOn(Schedulers.boundedElastic());
                     } else {
                         return Mono.empty();
                     }
-
                 })
                 .then();
     }
@@ -148,15 +146,15 @@ public class AListClient implements InitializingBean, DisposableBean {
                         aListAttachment.getParentId(), aListAttachment.getName())
                 .filter(exists -> !exists)
                 .flatMap(exists -> attachmentOperate.save(
-                        Attachment.builder()
-                                .parentId(aListAttachment.getParentId())
-                                .name(aListAttachment.getName())
-                                .updateTime(LocalDateTime.now())
-                                .type(type)
-                                .size(aListAttachment.getSize())
-                                .url(aListAttachment.getRaw_url())
-                                .fsPath(getPathByPathArr(aListAttachment.getPaths()))
-                                .build())
+                                Attachment.builder()
+                                        .parentId(aListAttachment.getParentId())
+                                        .name(aListAttachment.getName())
+                                        .updateTime(LocalDateTime.now())
+                                        .type(type)
+                                        .size(aListAttachment.getSize())
+                                        .url(aListAttachment.getRaw_url())
+                                        .fsPath(getPathByPathArr(aListAttachment.getPaths()))
+                                        .build())
                         .doOnSuccess(att -> log.debug("Save attachment[{}] for alist[{}]", att.getName(), att.getFsPath())))
                 .then(attachmentOperate.findByTypeAndParentIdAndName(
                         type, aListAttachment.getParentId(), aListAttachment.getName()
