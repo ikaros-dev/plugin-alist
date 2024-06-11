@@ -2,6 +2,8 @@ package run.ikaros.plugin.alist;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpEntity;
@@ -31,7 +33,7 @@ import java.util.*;
 
 @Slf4j
 @Component
-public class AListClient {
+public class AListClient implements InitializingBean, DisposableBean {
     private final RestTemplate restTemplate = new RestTemplate();
     private HttpHeaders httpHeaders = new HttpHeaders();
     private AListToken token;
@@ -92,7 +94,8 @@ public class AListClient {
                 .flatMap(aListAttachment -> {
                     if (aListAttachment.getIs_dir()) {
                         List<String> paths1 = aListAttachment.getPaths();
-                        return createAttachmentRecursively(paths1, aListAttachment.getId());
+                        return createAttachmentRecursively(paths1, aListAttachment.getId())
+                                .subscribeOn(Schedulers.boundedElastic());
                     } else {
                         return Mono.empty();
                     }
@@ -205,6 +208,7 @@ public class AListClient {
                 Object token1 = apiResult.getData().get("token");
                 httpHeaders.set("Authorization", String.valueOf(token1));
                 token.setToken(String.valueOf(token1));
+                log.info("refresh alist token success");
                 return customClient.update(token2cm(token))
                         .then(Mono.just(token));
             } else {
@@ -340,14 +344,20 @@ public class AListClient {
         return getToken().flatMap(aListToken -> refreshToken(true));
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    public Mono<Void> initAListToken() {
-        log.debug("init alist token.");
-        if (Objects.isNull(token)) {
-            // token is null, get config from db.
-            return updateOperateByToken().then();
+    @Override
+    public void destroy() throws Exception {
+        if (Objects.nonNull(refreshTokenTaskDisposable) && !refreshTokenTaskDisposable.isDisposed()) {
+            refreshTokenTaskDisposable.dispose();
         }
-        return Mono.empty();
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        log.debug("init alist token afterPropertiesSet.");
+        if (Objects.isNull(token) || StringUtils.isBlank(token.getToken())) {
+            // token is null, get config from db.
+            updateOperateByToken().subscribe();
+        }
     }
 
 
