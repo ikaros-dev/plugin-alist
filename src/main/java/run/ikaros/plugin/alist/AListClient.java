@@ -366,16 +366,17 @@ public class AListClient implements InitializingBean, DisposableBean {
     @Override
     public void afterPropertiesSet() throws Exception {
         log.debug("init alist token afterPropertiesSet.");
-        if (Objects.isNull(token) || StringUtils.isBlank(token.getToken())) {
-            // token is null, get config from db.
-            updateOperateByToken().subscribe();
-        }
 
         // init rest temp
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(10000); // 设置连接超时时间，10s
         factory.setReadTimeout(10000);
         restTemplate = new RestTemplate(factory);
+
+        if (Objects.isNull(token) || StringUtils.isBlank(token.getToken())) {
+            // token is null, get config from db.
+            updateOperateByToken().subscribe();
+        }
     }
 
 
