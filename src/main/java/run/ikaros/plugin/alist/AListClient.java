@@ -97,7 +97,9 @@ public class AListClient implements InitializingBean, DisposableBean {
                     if (aListAttachment.getIs_dir()) {
                         return Mono.defer(() ->
                                         createAttachmentRecursively(aListAttachment.getPaths(), aListAttachment.getId()))
-                                .subscribeOn(Schedulers.boundedElastic());
+                                .subscribeOn(Schedulers.boundedElastic())
+                                .doOnError(error -> log.error("create attachment fail for alist path[{}], err msg:[{}]",
+                                        getPathByPathArr(aListAttachment.getPaths()), error.getMessage(), error));
                     } else {
                         return Mono.empty();
                     }
