@@ -9,8 +9,11 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -33,7 +36,7 @@ import java.util.*;
 @Slf4j
 @Component
 public class AListClient implements InitializingBean, DisposableBean {
-    private final RestTemplate restTemplate = new RestTemplate();
+    private RestTemplate restTemplate;
     private HttpHeaders httpHeaders = new HttpHeaders();
     private AListToken token;
     private Disposable refreshTokenTaskDisposable;
@@ -102,7 +105,10 @@ public class AListClient implements InitializingBean, DisposableBean {
                 .then();
     }
 
-    @Retryable
+    @Retryable(
+            maxAttempts = 8,
+            backoff = @Backoff(delay = 2000)
+    )
     public AListAttachment[] fetchAttachments(List<String> paths) {
         Map<String, String> bodyMap = new HashMap<>();
         String path = getPathByPathArr(paths);
@@ -180,7 +186,10 @@ public class AListClient implements InitializingBean, DisposableBean {
         return refreshToken(false);
     }
 
-    @Retryable
+    @Retryable(
+            maxAttempts = 4,
+            backoff = @Backoff(delay = 2000)
+    )
     public Mono<AListToken> refreshToken(boolean refresh) {
         if (StringUtils.isBlank(token.getUrl())
                 || StringUtils.isBlank(token.getUsername())
@@ -243,7 +252,10 @@ public class AListClient implements InitializingBean, DisposableBean {
         return pStr;
     }
 
-    @Retryable
+    @Retryable(
+            maxAttempts = 5,
+            backoff = @Backoff(delay = 2000)
+    )
     private AListAttachment fetchAttachmentDetail(String path, AListAttachment attachment) {
         if (StringUtils.isEmpty(path)) {
             return attachment;
@@ -356,6 +368,12 @@ public class AListClient implements InitializingBean, DisposableBean {
             // token is null, get config from db.
             updateOperateByToken().subscribe();
         }
+
+        // init rest temp
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10000); // 设置连接超时时间，10s
+        factory.setReadTimeout(10000);
+        restTemplate = new RestTemplate(factory);
     }
 
 
