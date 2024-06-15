@@ -25,6 +25,21 @@ const doPostImportPath = () => {
   let data = {
       path: base64Path
   };
+
+  // 设置jwt token的请求头
+  const userStoreJson = window.localStorage.getItem('ikaros-store-user');
+  if (!userStoreJson) {
+    window.alert("操作取消，jwt令牌为空。")
+    return
+  }
+  const userStore = JSON.parse(userStoreJson);
+  if (!userStore || !userStore.jwtToken) {
+    window.alert("操作取消，jwt令牌为空。")
+    return
+  }
+  const jwtToken = userStore.jwtToken;
+  http.defaults.headers.common['Authorization'] = 'Bearer ' + jwtToken;
+
   var submitBtn = document.getElementById('submitBtn')
   console.debug('submitBtn:', submitBtn)
   if (submitBtn) submitBtn.innerHTML = '处理中...'
