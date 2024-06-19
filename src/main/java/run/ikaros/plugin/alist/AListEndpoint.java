@@ -9,6 +9,7 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import run.ikaros.api.custom.GroupVersionKind;
 import run.ikaros.api.endpoint.CustomEndpoint;
 import run.ikaros.api.infra.utils.StringUtils;
@@ -49,6 +50,9 @@ public class AListEndpoint implements CustomEndpoint {
                                         .content(contentBuilder()
                                                 .mediaType(MediaType.APPLICATION_JSON_VALUE))
                                         .implementation(AListImportPostBody.class)))
+                .POST("/alist/sign/refresh", this::doRefreshAlistUrlSigns,
+                        builder -> builder.operationId("RefreshAListUrlSigns")
+                                .tag(tag).description("Refresh AList URL signs."))
                 .build();
     }
 
@@ -74,6 +78,11 @@ public class AListEndpoint implements CustomEndpoint {
                 .doOnSuccess(strings -> log.info("End import alist files."))
                 .then(ServerResponse.ok().build())
                 .switchIfEmpty(ServerResponse.notFound().build());
+    }
+
+    Mono<ServerResponse> doRefreshAlistUrlSigns(ServerRequest request) {
+        return aListClient.doRefreshAlistUrlSigns()
+                .then(ServerResponse.ok().build());
     }
 
     /**

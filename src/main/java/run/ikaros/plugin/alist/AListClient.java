@@ -12,8 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -22,6 +23,7 @@ import reactor.core.scheduler.Schedulers;
 import run.ikaros.api.core.attachment.Attachment;
 import run.ikaros.api.core.attachment.AttachmentConst;
 import run.ikaros.api.core.attachment.AttachmentOperate;
+import run.ikaros.api.core.attachment.AttachmentSearchCondition;
 import run.ikaros.api.core.setting.ConfigMap;
 import run.ikaros.api.custom.ReactiveCustomClient;
 import run.ikaros.api.infra.utils.StringUtils;
@@ -32,6 +34,7 @@ import run.ikaros.plugin.alist.AListConst.ConfigMapKey;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Slf4j
 @Component
@@ -43,6 +46,7 @@ public class AListClient implements InitializingBean, DisposableBean {
 
     private final ReactiveCustomClient customClient;
     private final AttachmentOperate attachmentOperate;
+    private ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 
     public AListClient(ReactiveCustomClient customClient, AttachmentOperate attachmentOperate) {
         this.customClient = customClient;
@@ -174,6 +178,50 @@ public class AListClient implements InitializingBean, DisposableBean {
                 });
     }
 
+    public Mono<Void> doRefreshAlistUrlSigns() {
+        return attachmentOperate.findByTypeAndParentIdAndName(AttachmentType.Directory, AttachmentConst.ROOT_DIRECTORY_ID,
+                        AListConst.Attachment.DEFAULT_PARENT_NAME)
+                .switchIfEmpty(attachmentOperate.createDirectory(AttachmentConst.ROOT_DIRECTORY_ID, AListConst.Attachment.DEFAULT_PARENT_NAME))
+                .map(Attachment::getId)
+                .flatMapMany(this::refreshAttachmentAlistUrlSignsRecursively)
+                .then();
+    }
+
+    private Flux<Void> refreshAttachmentAlistUrlSignsRecursively(Long alistRootAttParentId) {
+        return attachmentOperate.listByCondition(AttachmentSearchCondition.builder()
+                        .parentId(alistRootAttParentId)
+                        .page(1)
+                        .size(Integer.MAX_VALUE)
+                        .build())
+                .map(JsonUtils::obj2Json)
+                .mapNotNull(json -> JsonUtils.json2obj(json, HashMap.class))
+                .map(map -> map.get("items"))
+                .map(JsonUtils::obj2Json)
+                .mapNotNull(json -> JsonUtils.json2ObjArr(json, new TypeReference<Attachment[]>() {
+                }))
+                .flatMapMany(Flux::fromArray)
+                .flatMap(attachment -> {
+                    if (attachment.getType().equals(AttachmentType.Directory)) {
+                        executor.execute(()-> refreshAttachmentAlistUrlSignsRecursively(attachment.getId())
+                                .doOnError(error -> log.error("refresh attachment alist url fail for alist path[{}], "
+                                                + "err msg:[{}]",
+                                        attachment.getFsPath(), error.getMessage(), error)).subscribe());
+                        return Mono.empty();
+                    } else {
+                        LocalDateTime now = LocalDateTime.now();
+                        if (attachment.getUpdateTime().plusDays(2).isAfter(now)) return Mono.empty();
+                        AListAttachment aListAttachment = fetchAttachmentDetail(attachment.getFsPath(), null);
+                        String rawUrl = aListAttachment.getRaw_url();
+                        attachment.setUrl(rawUrl);
+                        attachment.setUpdateTime(now);
+                        log.debug("refresh attachment url for \n att path: [{}] \n alist path: [{}]",
+                                attachment.getPath(), attachment.getFsPath());
+                        return attachmentOperate.save(attachment)
+                                .then();
+                    }
+                });
+    }
+
 
     /**
      * @see <https://alist.nn.ci/zh/guide/>
@@ -283,6 +331,7 @@ public class AListClient implements InitializingBean, DisposableBean {
         if (apiResult != null && apiResult.getCode() == 200) {
             AListAttachment aListAttachment = JsonUtils.json2obj(JsonUtils.obj2Json(apiResult.getData()), AListAttachment.class);
             if (Objects.isNull(aListAttachment)) return attachment;
+            if (Objects.isNull(attachment)) return aListAttachment;
             aListAttachment.setPaths(attachment.getPaths());
             aListAttachment.setId(attachment.getId());
             aListAttachment.setParentId(attachment.getParentId());
@@ -361,6 +410,7 @@ public class AListClient implements InitializingBean, DisposableBean {
         if (Objects.nonNull(refreshTokenTaskDisposable) && !refreshTokenTaskDisposable.isDisposed()) {
             refreshTokenTaskDisposable.dispose();
         }
+        executor.shutdown();
     }
 
     @Override
@@ -377,6 +427,15 @@ public class AListClient implements InitializingBean, DisposableBean {
             // token is null, get config from db.
             updateOperateByToken().subscribe();
         }
+
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(20);
+        executor.setQueueCapacity(200000);
+        executor.setKeepAliveSeconds(200);
+        executor.setThreadNamePrefix("ikaros-alist-thread-pool-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.initialize();
     }
 
 
