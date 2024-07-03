@@ -17,7 +17,9 @@ ext {
     libFile = 'lib/api-0.12.0.jar'
 }
 
-
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+}
 
 dependencies {
     compileOnly "org.springframework:spring-context:$springContext"
