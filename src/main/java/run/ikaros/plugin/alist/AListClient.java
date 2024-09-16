@@ -62,7 +62,7 @@ public class AListClient implements InitializingBean, DisposableBean {
                 // 获取导入的父目录ID，不存在则创建
                 .switchIfEmpty(attachmentOperate.createDirectory(AttachmentConst.ROOT_DIRECTORY_ID, AListConst.Attachment.DEFAULT_PARENT_NAME))
                 .map(Attachment::getId)
-                .flatMap(rootParentId -> mkdirByLastPath(paths, rootParentId))
+                .flatMap(rootParentId -> mkdirByLastPath(new ArrayList<>(paths), rootParentId))
                 .flatMap(parentId -> createAttachmentRecursively(paths, parentId));
     }
 
@@ -124,6 +124,7 @@ public class AListClient implements InitializingBean, DisposableBean {
         ApiResult apiResult = responseEntity.getBody();
         if (apiResult != null && apiResult.getCode() == 200) {
             Object content = apiResult.getData().get("content");
+            if (content == null) return new AListAttachment[0];
             return JsonUtils.obj2Arr(content, new TypeReference<AListAttachment[]>() {
             });
         } else {
@@ -136,16 +137,27 @@ public class AListClient implements InitializingBean, DisposableBean {
         return new AListAttachment[0];
     }
 
-    private Mono<Long> mkdirByLastPath(List<String> paths, Long parentId) {
-        String dirName = paths.get(paths.size() - 1);
+    private Mono<Attachment> mkdirWithNameAndParentId(String dirName, Long parentId) {
         if (dirName.startsWith("/")) dirName = dirName.substring(1);
         if (dirName.endsWith("/")) dirName = dirName.substring(0, dirName.length() - 1);
         return attachmentOperate.findByTypeAndParentIdAndName(AttachmentType.Directory, parentId, dirName)
                 .switchIfEmpty(attachmentOperate.createDirectory(parentId, dirName))
                 .flatMap(attachment -> attachmentOperate.findByTypeAndParentIdAndName(
                         attachment.getType(), attachment.getParentId(), attachment.getName()
-                ))
-                .map(Attachment::getId);
+                ));
+    }
+
+    private Mono<Long> mkdirByLastPath(List<String> paths, Long parentId) {
+        final int size = paths.size();
+        String name = paths.remove(0);
+        if (size > 1) {
+            return mkdirWithNameAndParentId(name, parentId)
+                    .map(Attachment::getId)
+                    .flatMap(id -> mkdirByLastPath(paths, id));
+        } else {
+            return mkdirWithNameAndParentId(name, parentId)
+                    .map(Attachment::getId);
+        }
     }
 
     private Mono<AListAttachment> saveAListAttachment(AListAttachment aListAttachment) {
