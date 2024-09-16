@@ -4,7 +4,7 @@
 
 # 15.2.0
 
-- 更新aList的url为/d/{path}(?sign={sign})
+
 
 # v0.12.11
 

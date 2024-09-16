@@ -29,8 +29,6 @@ import run.ikaros.api.plugin.event.PluginConfigMapUpdateEvent;
 import run.ikaros.api.store.enums.AttachmentType;
 import run.ikaros.plugin.alist.AListConst.ConfigMapKey;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -92,12 +90,7 @@ public class AListClient implements InitializingBean, DisposableBean {
                 })
                 .flatMap(aListAttachment -> {
                     String path = getPathByPathArr(aListAttachment.getPaths());
-                    AListAttachment att = fetchAttachmentDetail(path, aListAttachment);
-                    String name = path.substring(path.lastIndexOf('/') + 1);
-                    att.setRaw_url(token.getUrl()
-                            + "/d" + path.replace(name, URLEncoder.encode(name, StandardCharsets.UTF_8).replace("+", "%20"))
-                            + (StringUtils.isNotBlank(att.getSign()) ? "?sign=" + att.getSign() : ""));
-                    return Mono.just(att);
+                    return Mono.just(fetchAttachmentDetail(path, aListAttachment));
                 })
                 .flatMap(this::saveAListAttachment)
                 .flatMap(aListAttachment -> {
@@ -316,11 +309,7 @@ public class AListClient implements InitializingBean, DisposableBean {
         if (cmd == null) {
             cmd = new HashMap<>();
         }
-        String url = cmd.get(ConfigMapKey.apiBaseUrl);
-        if (url.endsWith("/")) {
-            url = url.substring(0, url.length() - 1);
-        }
-        token.setUrl(url);
+        token.setUrl(cmd.get(ConfigMapKey.apiBaseUrl));
         token.setUsername(cmd.get(ConfigMapKey.apiUsername));
         token.setPassword(cmd.get(ConfigMapKey.apiPassword));
         token.setEnableAutoTokenRefresh(
