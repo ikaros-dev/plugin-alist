@@ -18,16 +18,16 @@ public class AListPlugin extends BasePlugin {
 
     @Override
     public void start() {
-        log.info("plugin ["+ NAME +"] start success");
+        log.info("plugin [" + NAME + "] start success");
     }
 
     @Override
     public void stop() {
-        log.info("plugin ["+ NAME +"] stop success");
+        log.info("plugin [" + NAME + "] stop success");
     }
 
     @Override
     public void delete() {
-        log.info("plugin ["+ NAME +"] delete success");
+        log.info("plugin [" + NAME + "] delete success");
     }
 }
