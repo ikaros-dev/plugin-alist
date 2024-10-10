@@ -1,7 +1,4 @@
-package run.ikaros.plugin.alist;
-
-import run.ikaros.api.custom.Custom;
-import run.ikaros.api.custom.Name;
+package run.ikaros.plugin.alist.alist;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

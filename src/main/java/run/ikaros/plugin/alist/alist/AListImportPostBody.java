@@ -1,4 +1,4 @@
-package run.ikaros.plugin.alist;
+package run.ikaros.plugin.alist.alist;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
@@ -13,6 +13,6 @@ import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 @AllArgsConstructor
 @Accessors(chain = true)
 public class AListImportPostBody {
-    @Schema(requiredMode = REQUIRED, description = "导入的路径，需要警告base64进行编码。")
+    @Schema(requiredMode = REQUIRED, description = "导入的路径，需要进行base64进行编码。")
     private String path;
 }

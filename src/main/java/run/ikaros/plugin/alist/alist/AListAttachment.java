@@ -1,4 +1,4 @@
-package run.ikaros.plugin.alist;
+package run.ikaros.plugin.alist.alist;
 
 import lombok.Data;
 
