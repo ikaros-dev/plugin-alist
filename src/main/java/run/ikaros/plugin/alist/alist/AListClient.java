@@ -21,6 +21,7 @@ import reactor.core.scheduler.Schedulers;
 import run.ikaros.api.core.attachment.Attachment;
 import run.ikaros.api.core.attachment.AttachmentConst;
 import run.ikaros.api.core.attachment.AttachmentOperate;
+import run.ikaros.api.core.meta.MetaOperate;
 import run.ikaros.api.core.setting.ConfigMap;
 import run.ikaros.api.custom.ReactiveCustomClient;
 import run.ikaros.api.infra.utils.StringUtils;
@@ -43,10 +44,13 @@ public class AListClient implements InitializingBean, DisposableBean {
 
     private final ReactiveCustomClient customClient;
     private final AttachmentOperate attachmentOperate;
+    private final MetaOperate metaOperate;
 
-    public AListClient(ReactiveCustomClient customClient, AttachmentOperate attachmentOperate) {
+    public AListClient(ReactiveCustomClient customClient, AttachmentOperate attachmentOperate,
+                       MetaOperate metaOperate) {
         this.customClient = customClient;
         this.attachmentOperate = attachmentOperate;
+        this.metaOperate = metaOperate;
     }
 
     public Mono<Void> doImportFilesFromAListPath(List<String> paths) {
@@ -81,6 +85,7 @@ public class AListClient implements InitializingBean, DisposableBean {
 
         AListAttachment[] attachments = fetchAttachments(paths);
         return Flux.fromStream(Arrays.stream(attachments))
+                .parallel()
                 .map(aListAttachment -> {
                     List<String> newPaths = new ArrayList<>(paths);
                     newPaths.add(aListAttachment.getName());
