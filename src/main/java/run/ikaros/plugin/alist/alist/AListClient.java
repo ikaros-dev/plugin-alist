@@ -85,7 +85,7 @@ public class AListClient implements InitializingBean, DisposableBean {
 
         AListAttachment[] attachments = fetchAttachments(paths);
         return Flux.fromStream(Arrays.stream(attachments))
-                .parallel()
+                .subscribeOn(Schedulers.boundedElastic())
                 .map(aListAttachment -> {
                     List<String> newPaths = new ArrayList<>(paths);
                     newPaths.add(aListAttachment.getName());
